@@ -21,8 +21,8 @@ static int cache_mem_size(void *p) {
     return 0;
 }
 
-static int cache_mem_roundup(int n) {
-    return n;
+static int cache_mem_roundup(int size) {
+    return size;
 }
 
 static int cache_mem_init(void *not_used) {
@@ -42,7 +42,7 @@ void cache_mem_set_default(void) {
         cache_mem_size,
         cache_mem_roundup,
         cache_mem_init,
-        cache_mem_shutdown,
+        cache_mem_shutdown
     };
     cache_config();
 }
