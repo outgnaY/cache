@@ -36,6 +36,11 @@ typedef struct item {
  */
 #define ROUND8(X)   (((x) + 7) & ~7)
 
+/*
+ * functions
+ */
+extern int daemonize();
+
 
 
 /*
