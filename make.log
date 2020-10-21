@@ -1,0 +1,13 @@
+gcc -c ./src/test/testevent.c -o ./obj/testevent.o -I ./deps/libevent/include/ -L ./deps/libevent/lib/ -levent
+gcc -o ./release/testevent ./obj/testevent.o
+./obj/testevent.o：在函数‘time_cb’中：
+testevent.c:(.text+0x2a)：对‘event_add’未定义的引用
+./obj/testevent.o：在函数‘main’中：
+testevent.c:(.text+0x3a)：对‘event_init’未定义的引用
+testevent.c:(.text+0x73)：对‘event_set’未定义的引用
+testevent.c:(.text+0x84)：对‘event_base_set’未定义的引用
+testevent.c:(.text+0x93)：对‘event_add’未定义的引用
+testevent.c:(.text+0x9f)：对‘event_base_dispatch’未定义的引用
+collect2: error: ld returned 1 exit status
+makefile:9: recipe for target 'release/testevent' failed
+make: *** [release/testevent] Error 1
