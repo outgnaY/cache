@@ -1,29 +1,57 @@
 
+#include <stdio.h>
 #include <stdint.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <pthread.h>
 
+#include <event.h>
+
+#include "connection.h"
 /* slab sizing definitions */
 #define POWER_SMALLEST 1
 
 /* max number of slab classes */
 #define MAX_NUMBER_OF_SLAB_CLASSES (63 + 1)
 
-
 /* global settings */
 struct settings {
     int item_size_max;      /* maximum item size */
+    int num_threads;        /* number of worker threads */
 };
 
-/**
- * stored item structure
- */
+/* stored item structure */
 typedef struct item {
     struct item *next;
     struct item *prev;
     uint8_t slabs_clsid;
 
 } item;
+
+/* forward declaration */
+typedef struct conn_queue CQ;
+
+typedef struct libevent_thread LIBEVENT_THREAD;
+struct libevent_thread {
+    pthread_t thread_id;                /* unique ID of this thread */
+    struct event_base *base;            /* libevent handle this thread uses */
+    struct event notify_event;          /* listen event for notify pipe */
+    int notify_receive_fd;              /* receiving end of notify pipe */
+    int notify_send_fd;                 /* sending end of notify pipe */
+    CQ *new_conn_queue;  /* queue of new connections */
+};
+
+
+/* 
+ * functions related to connection
+ */
+
+
+/*
+ * functions that are libevent-related
+ */
+void cache_thread_init(int nthreads, void *arg);
+void dispatch_conn_new(int sfd, enum conn_states init_state, int event_flags);
 
 /*
  * result codes
