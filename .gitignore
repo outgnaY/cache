@@ -1,1 +1,3 @@
-/deps/libevent/lib
+.vscode
+obj/*
+release/*

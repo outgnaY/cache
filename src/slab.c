@@ -1,7 +1,5 @@
 /* memory allocate */
 #include "cache.h"
-/* globals */
-extern struct settings settings;
 typedef struct {
     unsigned int size;      /* size of items */
     unsigned int perslab;   /* how many items per slab */

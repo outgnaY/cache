@@ -3,7 +3,6 @@
 #include "cache.h"
 
 #define ITEMS_PER_ALLOC 64
-extern struct settings settings;
 /* an item in the connection queue */
 typedef struct conn_queue_item CQ_ITEM;
 struct conn_queue_item {

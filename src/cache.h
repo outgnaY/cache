@@ -4,21 +4,31 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <unistd.h>
+#include <sys/resource.h>
 
 #include <event.h>
 
+#include "cache-config.h"
 #include "connection.h"
 /* slab sizing definitions */
 #define POWER_SMALLEST 1
 
 /* max number of slab classes */
 #define MAX_NUMBER_OF_SLAB_CLASSES (63 + 1)
+/* relative time */
+typedef unsigned int rel_time_t;
 
 /* global settings */
 struct settings {
     int item_size_max;      /* maximum item size */
     int num_threads;        /* number of worker threads */
+    int maxconns;           /* max connections opened simultaneously */
+    int idle_timeout        /* number of cseconds to let connections idle */
 };
+/* exported globals */
+extern struct settings settings;
+extern volatile rel_time_t current_time;
 
 /* stored item structure */
 typedef struct item {
@@ -28,7 +38,7 @@ typedef struct item {
 
 } item;
 
-/* forward declaration */
+/* forward declarations */
 typedef struct conn_queue CQ;
 
 typedef struct libevent_thread LIBEVENT_THREAD;
@@ -62,7 +72,7 @@ void dispatch_conn_new(int sfd, enum conn_states init_state, int event_flags);
  * round up a number to the next larger multiple of 8.
  * used to force 8-byte alignment on 64-bit architectures.
  */
-#define ROUND8(X)   (((x) + 7) & ~7)
+#define ROUND8(x)   (((x) + 7) & ~7)
 
 /*
  * functions
