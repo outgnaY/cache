@@ -6,11 +6,21 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <sys/resource.h>
+#include <getopt.h>
+#include <signal.h>
+#include <sysexits.h>
+#include <sys/types.h>
+#include <pwd.h>
+#include <grp.h>
+#include <errno.h>
+#include <string.h>
 
 #include <event.h>
 
 #include "cache-config.h"
 #include "connection.h"
+
+#define VERSION 1.0
 /* slab sizing definitions */
 #define POWER_SMALLEST 1
 

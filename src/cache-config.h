@@ -2,7 +2,7 @@
 #define CACHE_CONFIG_H
 
 #define CACHE_SYSTEM_MALLOC
-
+#define HAVE_GETOPT_LONG 
 
 
 #endif
