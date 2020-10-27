@@ -33,7 +33,7 @@ static void conn_close(conn *c) {
 
 /* close idle connection */
 void conn_close_idle(conn *c) {
-    if (settings.idle_timeout > 0 && (current_time - c->last_cmd_time) > settings.idle_timeout) {
+    if (settings.idle_timeout > 0 && (g_rel_current_time - c->last_cmd_time) > settings.idle_timeout) {
         /* a connection timeout */
         if (c->state)
     }
@@ -89,7 +89,7 @@ static int start_conn_timeout_thread() {
     }
     do_run_conn_timeout_thread = 1;
     if ((ret = pthread_create(&conn_timeout_tid, NULL, conn_timeout_thread, NULL)) != 0) {
-        fprintf(stderr, "can't create idle connection timeout thread: %s\n", strerror(ret));
+        fprintf(stderr, "can't create idle connection timeout thread: %s\n", STRERROR(ret));
         return -1;
     }
     return 0;

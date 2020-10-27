@@ -2,7 +2,7 @@
 
 /* exported globals */
 struct settings settings;               /* settings */
-volatile rel_time_t current_time;       /* current time */
+volatile rel_time_t g_rel_current_time;       /* current time */
 
 /* static variables */
 static struct event_base *main_base;

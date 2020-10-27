@@ -15,18 +15,18 @@
 #include <errno.h>
 #include <string.h>
 #include <syslog.h>
+#include <sys/stat.h>
+#include <sys/file.h>
 
 #include <event.h>
 
+#include "common_define.h"
 #include "cache-config.h"
 #include "connection.h"
+#include "util.h"
+#include "logger.h"
 
-#define VERSION 1.0
-/* slab sizing definitions */
-#define POWER_SMALLEST 1
 
-/* max number of slab classes */
-#define MAX_NUMBER_OF_SLAB_CLASSES (63 + 1)
 /* relative time */
 typedef unsigned int rel_time_t;
 
@@ -46,7 +46,8 @@ struct settings {
 };
 /* exported globals */
 extern struct settings settings;
-extern volatile rel_time_t current_time;
+extern volatile rel_time_t g_rel_current_time;        /* how many seconds since process started */
+extern volatile time_t g_current_time;          /* global time stamp */
 
 /* stored item structure */
 typedef struct item {
@@ -81,16 +82,7 @@ struct libevent_thread {
 void cache_thread_init(int nthreads, void *arg);
 void dispatch_conn_new(int sfd, enum conn_states init_state, int event_flags);
 
-/*
- * result codes
- */
-#define CACHE_OK 0                          /* successful result */
 
-/*
- * round up a number to the next larger multiple of 8.
- * used to force 8-byte alignment on 64-bit architectures.
- */
-#define ROUND8(x)   (((x) + 7) & ~7)
 
 /*
  * functions

@@ -8,11 +8,11 @@ SDIR=./src
 BDIR=./release
 TEST=$(SDIR)/test
 
-all: testevent 
-testevent: $(ODIR)/testevent.o
-	$(CC) $(OPTIONS) $(BDIR)/testevent $^ $(LIBEVENT)
+all: test_event 
+test_event: $(ODIR)/test_event.o
+	$(CC) $(OPTIONS) $(BDIR)/test_event $^ $(LIBEVENT)
 
-$(ODIR)/testevent.o: $(TEST)/testevent.c
+$(ODIR)/test_event.o: $(TEST)/test_event.c
 	$(CC) $(CFLAGS) $< $(OPTIONS) $@ $(LIBEVENT) 
 
 .PHONY: clean

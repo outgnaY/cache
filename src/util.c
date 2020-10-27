@@ -2,6 +2,11 @@
 
 /* util functions */
 
+
+/* check if file exists */
+int file_exists(const char *filename) {
+    return access(filename, F_OK);
+}
 /* perror with format */
 void vperror(const char *fmt, ...) {
     int old_errno = errno;

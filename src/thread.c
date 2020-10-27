@@ -1,5 +1,4 @@
 /* thread management */
-#include <pthread.h>
 #include "cache.h"
 
 #define ITEMS_PER_ALLOC 64
@@ -129,7 +128,7 @@ static void create_worker(void *(*func)(void *), void *arg) {
     int ret;
     pthread_attr_init(&attr);
     if ((ret = pthread_create(&((LIBEVENT_THREAD*)arg)->thread_id, &attr, func, arg)) != 0) {
-        fprintf(stderr, "can't create thread: %s\n", strerror(ret));
+        fprintf(stderr, "can't create thread: %s\n", STRERROR(ret));
         exit(1);
     }
 }
