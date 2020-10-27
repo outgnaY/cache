@@ -14,6 +14,7 @@
 #include <grp.h>
 #include <errno.h>
 #include <string.h>
+#include <syslog.h>
 
 #include <event.h>
 
@@ -28,6 +29,13 @@
 #define MAX_NUMBER_OF_SLAB_CLASSES (63 + 1)
 /* relative time */
 typedef unsigned int rel_time_t;
+
+/* enums */
+enum stop_reasons {
+    NOT_STOP,
+    /* GRACE_STOP, */
+    EXIT_NORMALLY
+};
 
 /* global settings */
 struct settings {

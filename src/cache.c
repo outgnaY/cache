@@ -6,6 +6,29 @@ volatile rel_time_t current_time;       /* current time */
 
 /* static variables */
 static struct event_base *main_base;
+static int stop_main_loop = NOT_STOP;
+static volatile sig_atomic_t sig_hup = 0;            /* a HUP signal received but not ye handled */
+
+
+
+/* remove pidfile */
+static void remove_pidfile(const char *pid_file) {
+    if (pid_file == NULL) {
+        return;
+    }
+    if (unlink(pid_file) != 0) {
+        fprintf(stderr, "could not remove the pid file %s\n", pid_file);
+    }
+}
+
+static void sig_handler(const int sig) {
+    stop_main_loop = EXIT_NORMALLY;
+    printf("signal %s\n", strsignal(sig));
+}
+
+static void sighup_handler() {
+    sig_hup = 1;
+}
 
 static void version() {
     printf("in-memory cache service. version %d\n", VERSION);
@@ -27,6 +50,13 @@ int main(int argc, char **argv) {
     struct passwd *pw;
     struct rlimit rlim;
     int c;  
+
+    int retval = EXIT_SUCCESS;  /* return status */
+
+    /* handle signals */
+    signal(SIGINT, sig_handler);
+    signal(SIGTERM, sig_handler);
+    signal(SIGHUP, sighup_handler);
     /* process arguments */
     char *shortopts = 
         "d"     /* daemon mode */
@@ -126,5 +156,42 @@ int main(int argc, char **argv) {
         }
     }
     /* initialize main thread libevent instance */
-#if defined(LIBEVENT_VERSION_NUMBER)
+#if defined(LIBEVENT_VERSION_NUMBER) && LIBEVENT_VERSION_NUMBER >= 0X2000101
+    /* determine the init api according to libevent library version */
+    struct event_config *ev_config;
+    ev_config = event_config_new();
+    event_config_set_flag(ev_config, EVENT_BASE_FLAG_NOLOCK);
+    main_base = event_base_new_with_config(ev_config);
+    event_config_free(ev_config);
+#else
+    main_base = event_init();
+#endif
+    /* ignore SIGPIPE signals */
+    if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
+        perror("failed to ignore SIGPIPE; sigaction");
+        exit(EX_OSERR);
+    }
+
+
+
+    /* enter the event loop */
+    while(!stop_main_loop) {
+        if (event_base_loop(main_base, EVLOOP_ONCE) != 0) {
+            retval = EXIT_FAILURE;
+            break;
+        }
+    }
+    switch (stop_main_loop) {
+    case EXIT_NORMALLY:
+        /* normal shutdown */
+        break;
+    default:
+        fprintf(stderr, "exiting on error\n");
+        break;
+    }
+
+    /* cleanup base */
+    event_base_free(main_base);
+
+    return retval;
 }
