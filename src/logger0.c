@@ -4,7 +4,7 @@
 #define MAX_PATH_SIZE 256
 #define MAX_NAME_SIZE 64
 #define MAX_BASE_SIZE 128
-#define DEFAULT_ROTATE_SIZE 1024 * 1024
+#define DEFAULT_ROTATE_SIZE 64 * 1024 * 1024    /* 64MB */
 #define LINE_MAX 2048
 /* time precisions */
 #define LOG_TIME_PRECISION_SECOND  's'      /* second */
@@ -19,11 +19,11 @@ typedef struct log_level {
 } log_level_t;
 
 log_level_t log_level_map[5] = {
-    {"DEBUG", true},
-    {"INFO",  true},
-    {"WARN",  false},
+    {"FATAL", true},
     {"ERROR", false},
-    {"FATAL", true}
+    {"WARN",  false},
+    {"INFO",  true},
+    {"DEBUG", true} 
 };
 
 typedef struct log_context {
@@ -36,7 +36,7 @@ typedef struct log_context {
     int64_t rotate_size;                    /* rotate the log file when log file size exceeds this parameter */
     bool rotate_immediately;                /* should rotate immediately */
     char log_base_path[MAX_BASE_SIZE];      /* log base path */
-    char log_filename[MAX_NAME_SIZE];   /* save the log filename */
+    char log_filename[MAX_NAME_SIZE];       /* save the log filename */
     char help_buf[MAX_PATH_SIZE];           /* helper buffer */
     char rotate_time_format[32];            /* time format for rotate filename, default: %Y%m%d_%H%M%S */
     int fd_flags;                           /* log fd flags */
@@ -154,7 +154,6 @@ int log_do_rotate(log_context_t *context) {
     time_t current_time;
     char old_filename[MAX_PATH_SIZE + 32];
     int len;
-    /* int exist = 0; */
     int result;
     /* if we are doing unit test, use time(2) to get current time. otherwise use cached time */
 #ifdef LOGGER_TEST
@@ -170,17 +169,14 @@ int log_do_rotate(log_context_t *context) {
     
     localtime_r(&current_time, &tm);
     memset(old_filename, 0, sizeof(old_filename));
-    len = sprintf(old_filename, "%s.", context->log_filename);
+    len = sprintf(old_filename, "%s.", context->help_buf);
     strftime(old_filename + len, sizeof(old_filename) - len, context->rotate_time_format, &tm);
     /* check if old file exists, then replace atomic */
     if (access(old_filename, F_OK) == 0) {
         fprintf(stderr, "file: %s already exist\n", old_filename);
-        /* exist = 1; */
-    } else if (rename(context->log_filename, old_filename) != 0) {
+    } else if (rename(context->help_buf, old_filename) != 0) {
         fprintf(stderr, "rename %s to %s fail, errno: %d, error info: %s\n", context->log_filename, old_filename, errno, STRERROR(errno));
-        /* exist = 0; */
     } else {
-        /* exist = 1; */
     }
     result = log_open(context);
     return result;
@@ -230,7 +226,7 @@ static int log_fsync(log_context_t *context, const bool need_lock) {
     context->current = context->log_buf;
     if (written != write_bytes) {
         result = -1;
-        fprintf(stderr, "short write, errno: %d, error info: %s\n", errno, STRERROR(errno));
+        fprintf(stderr, "short write occured, errno: %d, error info: %s\n", errno, STRERROR(errno));
     }
     context->current_size += written;
     if (context->rotate_size > 0) {

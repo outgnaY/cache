@@ -13,7 +13,7 @@ TEST=$(SDIR)/test
 all: test_event test_logger0
 test_event: $(ODIR)/test_event.o
 	$(CC) $(OPTIONS) $(BDIR)/test_event $^ $(LIBEVENT)
-test_logger0: $(ODIR)/test_logger0.o $(ODIR)/logger0.o $(ODIR)/util.o
+test_logger0: $(ODIR)/test_logger0.o $(ODIR)/logger0.o $(ODIR)/util.o -lpthread
 	$(CC) $(OPTIONS) $(BDIR)/test_logger0 $^ 
 
 $(ODIR)/test_event.o: $(TEST)/test_event.c

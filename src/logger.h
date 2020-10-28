@@ -2,11 +2,11 @@
 #define LOGGER_H
 
 typedef enum {
-    LOGGER_DEBUG,
-    LOGGER_INFO,
-    LOGGER_WARN,
+    LOGGER_FATAL,
     LOGGER_ERROR,
-    LOGGER_FATAL
+    LOGGER_WARN,
+    LOGGER_INFO,
+    LOGGER_DEBUG   
 } logger_level;
 
 
