@@ -4,7 +4,7 @@
 #define MAX_PATH_SIZE 256
 #define MAX_NAME_SIZE 64
 #define MAX_BASE_SIZE 128
-#define MAX_
+#define DEFAULT_ROTATE_SIZE 1024 * 1024
 #define LINE_MAX 2048
 /* time precisions */
 #define LOG_TIME_PRECISION_SECOND  's'      /* second */
@@ -73,6 +73,7 @@ int log_do_init(log_context_t *context) {
     context->log_fd = STDERR_FILENO;
     context->time_precision = LOG_TIME_PRECISION_SECOND;
     context->compress_log_days_before = 1;
+    context->rotate_size = DEFAULT_ROTATE_SIZE;
     /* set log base path current work path */
     strcpy(context->log_base_path, ".");
     strcpy(context->log_filename, "simplelog");
