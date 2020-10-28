@@ -1,6 +1,11 @@
 /* common defines */
-#define STRERROR(no) (strerror(no) != NULL ? strerror(no) : "unknown error")
 #define VERSION 1.0
+
+typedef enum {
+    false = 0,
+    true = 1
+} bool;
+#define STRERROR(no) (strerror(no) != NULL ? strerror(no) : "unknown error")
 /* slab sizing definitions */
 #define POWER_SMALLEST 1
 

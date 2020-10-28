@@ -42,7 +42,7 @@ struct settings {
     int item_size_max;      /* maximum item size */
     int num_threads;        /* number of worker threads */
     int maxconns;           /* max connections opened simultaneously */
-    int idle_timeout        /* number of cseconds to let connections idle */
+    int idle_timeout;       /* number of cseconds to let connections idle */
 };
 /* exported globals */
 extern struct settings settings;

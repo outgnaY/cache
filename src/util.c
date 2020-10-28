@@ -4,8 +4,8 @@
 
 
 /* check if file exists */
-int file_exists(const char *filename) {
-    return access(filename, F_OK);
+bool file_exists(const char *filename) {
+    return access(filename, F_OK) == 0;
 }
 /* perror with format */
 void vperror(const char *fmt, ...) {

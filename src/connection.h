@@ -3,6 +3,7 @@
 
 /* forward declarations */
 typedef struct libevent_thread LIBEVENT_THREAD;
+typedef unsigned int rel_time_t;
 struct event;
 /* states of a connection */
 enum conn_states {
