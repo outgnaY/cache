@@ -4,7 +4,6 @@
 
 /*
  * default memory allocator by simply wrapping system calls
- * 
  */
 static void *cache_mem_malloc(int size) {
     int64_t *ptr;
@@ -40,7 +39,7 @@ static void *cache_mem_realloc(void *p, int size) {
         // TODO log
 
     }
-    return (void *)ptr
+    return (void *)ptr;
 }
 
 static int cache_mem_size(void *p) {

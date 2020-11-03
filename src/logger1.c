@@ -2,7 +2,9 @@
 
 
 typedef struct async_log_context {
-
+    pthread_mutex_t log_thread_lock;        /* mutex lock */
+    pthread_cond_t log_cond;                /* condition variable */
+    
 } async_log_context_t;
 
 /* exported log functions */

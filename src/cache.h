@@ -25,6 +25,7 @@
 #include "connection.h"
 #include "util.h"
 #include "logger.h"
+#include "list.h"
 
 
 /* relative time */
