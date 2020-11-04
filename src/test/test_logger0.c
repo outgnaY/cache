@@ -13,7 +13,7 @@ void *func(void *args) {
     return NULL;
 }
 int main() {
-    /* basic tests */
+    // basic tests 
     
     int i; 
     log_init();
@@ -27,7 +27,7 @@ int main() {
         // usleep(500);
     }
     
-    /* multi-threading tests */
+    // multi-threading tests 
     /*
     time_t start, end;
     log_init();

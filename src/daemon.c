@@ -4,23 +4,23 @@
 #include <stdio.h>
 #include "cache.h"
 
-/* daemonize the server process */
+// daemonize the server process 
 int daemonize(int nochdir) {
     pid_t pid;
     int fd;
-    /* create new process */
+    // create new process 
     pid = fork();
     if (pid == -1) {
         return -1;
     } else if (pid != 0) {
-        /* use _exit instead of exit to avoid flush buffers */
+        // use _exit instead of exit to avoid flush buffers 
         _exit(EXIT_SUCCESS);
     }
-    /* create new session and process group */
+    // create new session and process group 
     if (setsid() == -1) {
         return -1;
     }
-    /* set the working directory to the root directory */
+    // set the working directory to the root directory 
     if (nochdir == 0) {
         if (chdir("/") == -1) {
             perror("chdir");

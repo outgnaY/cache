@@ -1,13 +1,13 @@
 #include "cache.h"
 
-/* util functions */
+// util functions 
 
 
-/* check if file exists */
+// check if file exists 
 bool file_exists(const char *filename) {
     return access(filename, F_OK) == 0;
 }
-/* perror with format */
+// perror with format 
 void vperror(const char *fmt, ...) {
     int old_errno = errno;
     char buf[1024];

@@ -28,29 +28,39 @@
 #include "list.h"
 
 
-/* relative time */
+// relative time 
 typedef unsigned int rel_time_t;
 
-/* enums */
-enum stop_reasons {
+// enums 
+typedef enum {
     NOT_STOP,
-    /* GRACE_STOP, */
+    // GRACE_STOP, 
     EXIT_NORMALLY
-};
+} stop_reasons;
 
-/* global settings */
+typedef enum {
+    CACHE_CONFIG_ALLOC
+} cache_config_op;
+
+// forward declarations 
+typedef struct conn_queue CQ;
+typedef struct cache_mem_methods cache_mem_methods;
+typedef struct libevent_thread LIBEVENT_THREAD;
+
+// global settings 
 struct settings {
-    int item_size_max;      /* maximum item size */
-    int num_threads;        /* number of worker threads */
-    int maxconns;           /* max connections opened simultaneously */
-    int idle_timeout;       /* number of cseconds to let connections idle */
+    int item_size_max;      // maximum item size 
+    int num_threads;        // number of worker threads 
+    int maxconns;           // max connections opened simultaneously 
+    int idle_timeout;       // number of cseconds to let connections idle 
+    cache_mem_methods *m;    // memory related methods
 };
-/* exported globals */
+// exported globals 
 extern struct settings settings;
-extern volatile rel_time_t g_rel_current_time;        /* how many seconds since process started */
-extern volatile time_t g_current_time;          /* global time stamp */
+extern volatile rel_time_t g_rel_current_time;        // how many seconds since process started 
+extern volatile time_t g_current_time;                // global time stamp 
 
-/* stored item structure */
+// stored item structure 
 typedef struct item {
     struct item *next;
     struct item *prev;
@@ -58,19 +68,23 @@ typedef struct item {
 
 } item;
 
-/* forward declarations */
-typedef struct conn_queue CQ;
 
-typedef struct libevent_thread LIBEVENT_THREAD;
 struct libevent_thread {
-    pthread_t thread_id;                /* unique ID of this thread */
-    struct event_base *base;            /* libevent handle this thread uses */
-    struct event notify_event;          /* listen event for notify pipe */
-    int notify_receive_fd;              /* receiving end of notify pipe */
-    int notify_send_fd;                 /* sending end of notify pipe */
-    CQ *new_conn_queue;  /* queue of new connections */
+    pthread_t thread_id;                // unique ID of this thread 
+    struct event_base *base;            // libevent handle this thread uses 
+    struct event notify_event;          // listen event for notify pipe 
+    int notify_receive_fd;              // receiving end of notify pipe 
+    int notify_send_fd;                 // sending end of notify pipe 
+    CQ *new_conn_queue;                 // queue of new connections 
 };
 
+
+/**
+ * setup global configs
+ */
+int cache_config(cache_config_op op, ...);
+
+void cache_mem_set_default(void);
 
 /* 
  * functions related to connection
@@ -81,7 +95,7 @@ struct libevent_thread {
  * functions that are libevent-related
  */
 void cache_thread_init(int nthreads, void *arg);
-void dispatch_conn_new(int sfd, enum conn_states init_state, int event_flags);
+void dispatch_conn_new(int sfd, conn_states init_state, int event_flags);
 
 
 
@@ -91,17 +105,14 @@ void dispatch_conn_new(int sfd, enum conn_states init_state, int event_flags);
 extern int daemonize();
 
 
-
 /*
  * memory allocation methods
  */
-typedef struct cache_mem_methods cache_mem_methods;
 struct cache_mem_methods {
-    void *(*mem_malloc)(int);               /* memory allocation function */
-    void *(*mem_free)(void *);              /* memory free function */
-    void *(*mem_realloc)(void *, int);      /* memory resize function */
-    int (*mem_size)(void *);                /* return the size of an allocation */
-    int (*mem_roundup)(int);                /* round up the request size to allocation size */
-    int (*mem_init)(void *);                /* initialize the memory allocator */
-    int (*mem_shutdown)(void *);            /* finalize the memory allocator */
+    void *(*mem_malloc)(size_t);                        // memory allocation function 
+    void *(*mem_free)(void *, size_t);                  // memory free function 
+    void *(*mem_realloc)(void *, size_t, size_t);       // memory resize function 
+    size_t (*mem_roundup)(size_t);                      // round up the request size to allocation size 
+    int (*mem_init)(void *);                            // initialize the memory allocator 
+    void (*mem_shutdown)(void *);                       // finalize the memory allocator 
 };

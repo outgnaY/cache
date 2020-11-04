@@ -10,13 +10,15 @@ BDIR=$(PWD)/release
 TEST=$(SDIR)/test
 
 
-all: test_event test_logger0 test_mem2
+all: test_event test_logger0 main
 test_event: $(ODIR)/test_event.o
 	$(CC) $(OPTIONS) $(BDIR)/test_event $^ $(LIBEVENT)
-test_logger0: $(ODIR)/test_logger0.o $(ODIR)/logger0.o $(ODIR)/util.o -lpthread
+test_logger0: $(ODIR)/test_logger0.o $(ODIR)/logger0.o $(ODIR)/util.o 
 	$(CC) $(OPTIONS) $(BDIR)/test_logger0 $^ 
-test_mem2: $(ODIR)/test_mem2.o -lpthread
-	$(CC) $(OPTIONS) $(BDIR)/test_mem2 $^
+#test_mem2: $(ODIR)/test_mem2.o 
+#	$(CC) $(OPTIONS) $(BDIR)/test_mem2 $^
+main: $(ODIR)/cache.o $(ODIR)/mem0.o $(ODIR)/mem1.o $(ODIR)/mem2.o 
+	$(CC) $(OPTIONS) $(BDIR)/main $^
 
 $(ODIR)/test_event.o: $(TEST)/test_event.c
 	$(CC) $(CFLAGS) $< $(OPTIONS) $@ $(LIBEVENT) 
@@ -26,7 +28,13 @@ $(ODIR)/logger0.o: $(SDIR)/logger0.c
 	$(CC) $(CFLAGS) $< $(OPTIONS) $@
 $(ODIR)/util.o: $(SDIR)/util.c
 	$(CC) $(CFLAGS) $< $(OPTIONS) $@
-$(ODIR)/test_mem2.o: $(SDIR)/mem2.c 
+$(ODIR)/mem0.o: $(SDIR)/mem0.c
+	$(CC) $(CFLAGS) $< $(OPTIONS) $@
+$(ODIR)/mem1.o: $(SDIR)/mem1.c
+	$(CC) $(CFLAGS) $< $(OPTIONS) $@
+$(ODIR)/mem2.o: $(SDIR)/mem2.c 
+	$(CC) $(CFLAGS) $< $(OPTIONS) $@
+$(ODIR)/cache.o: $(SDIR)/cache.c
 	$(CC) $(CFLAGS) $< $(OPTIONS) $@
 .PHONY: clean
 clean:

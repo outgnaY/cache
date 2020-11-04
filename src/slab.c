@@ -1,13 +1,13 @@
-/* memory allocate */
+// memory allocate 
 #include "cache.h"
 typedef struct {
-    unsigned int size;      /* size of items */
-    unsigned int perslab;   /* how many items per slab */
-    void *slots;            /* list of free items */
-    unsigned int sl_curr;   /* total free items in list */
-    unsigned int slabs;     /* how many slabs were allocated for this class */
-    void **slab_list;       /* array of slab pointers */
-    unsigned int list_size; /* size of slab list */
+    unsigned int size;      // size of items 
+    unsigned int perslab;   // how many items per slab 
+    void *slots;            // list of free items 
+    unsigned int sl_curr;   // total free items in list 
+    unsigned int slabs;     // how many slabs were allocated for this class 
+    void **slab_list;       // array of slab pointers 
+    unsigned int list_size; // size of slab list 
 } slabclass_t;
 
 static slabclass_t slabclass[MAX_NUMBER_OF_SLAB_CLASSES];

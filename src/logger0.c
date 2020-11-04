@@ -1,16 +1,16 @@
 #include "cache.h"
-/* basic logger implementation */
+// basic logger implementation 
 #define LOG_BUF_SIZE 64 * 1024
 #define MAX_PATH_SIZE 256
 #define MAX_NAME_SIZE 64
 #define MAX_BASE_SIZE 128
-#define DEFAULT_ROTATE_SIZE 64 * 1024 * 1024    /* 64MB */
+#define DEFAULT_ROTATE_SIZE 64 * 1024 * 1024    // 64MB 
 #define LINE_MAX 2048
-/* time precisions */
-#define LOG_TIME_PRECISION_SECOND  's'      /* second */
-#define LOG_TIME_PRECISION_MSECOND 'm'      /* millisecond */
-#define LOG_TIME_PRECISION_USECOND 'u'      /* microsecond */
-#define LOG_TIME_PRECISION_NONE    '0'      /* do not output timestamp */
+// time precisions 
+#define LOG_TIME_PRECISION_SECOND  's'      // second 
+#define LOG_TIME_PRECISION_MSECOND 'm'      // millisecond 
+#define LOG_TIME_PRECISION_USECOND 'u'      // microsecond 
+#define LOG_TIME_PRECISION_NONE    '0'      // do not output timestamp 
 #define LOGGER_TEST
 
 typedef struct log_level {
@@ -27,27 +27,27 @@ log_level_t log_level_map[5] = {
 };
 
 typedef struct log_context {
-    int log_fd;                             /* log file descriptor, default value is STDERR_FILENO */
-    char *log_buf;                          /* log buffer */
-    char *current;                          /* current position in buffer */
-    pthread_mutex_t log_thread_lock;        /* mutex lock */
-    logger_level level;                     /* log level */
-    int64_t current_size;                   /* log file current size */
-    int64_t rotate_size;                    /* rotate the log file when log file size exceeds this parameter */
-    bool rotate_immediately;                /* should rotate immediately */
-    char log_base_path[MAX_BASE_SIZE];      /* log base path */
-    char log_filename[MAX_NAME_SIZE];       /* save the log filename */
-    char help_buf[MAX_PATH_SIZE];           /* helper buffer */
-    char rotate_time_format[32];            /* time format for rotate filename, default: %Y%m%d_%H%M%S */
-    int fd_flags;                           /* log fd flags */
-    char time_precision;                    /* time precision */
-    int compress_log_days_before;           /* compress the log files before N days */
-    bool log_to_cache;                      /* if write to buffer firstly, then sync to disk, default false */
+    int log_fd;                             // log file descriptor, default value is STDERR_FILENO 
+    char *log_buf;                          // log buffer 
+    char *current;                          // current position in buffer 
+    pthread_mutex_t log_thread_lock;        // mutex lock 
+    logger_level level;                     // log level 
+    int64_t current_size;                   // log file current size 
+    int64_t rotate_size;                    // rotate the log file when log file size exceeds this parameter 
+    bool rotate_immediately;                // should rotate immediately 
+    char log_base_path[MAX_BASE_SIZE];      // log base path 
+    char log_filename[MAX_NAME_SIZE];       // save the log filename 
+    char help_buf[MAX_PATH_SIZE];           // helper buffer 
+    char rotate_time_format[32];            // time format for rotate filename, default: %Y%m%d_%H%M%S 
+    int fd_flags;                           // log fd flags 
+    char time_precision;                    // time precision 
+    int compress_log_days_before;           // compress the log files before N days 
+    bool log_to_cache;                      // if write to buffer firstly, then sync to disk, default false 
 } log_context_t;
 
-/* shared log context */
+// shared log context 
 static log_context_t shared_context;
-/* declarations */
+// declarations 
 static void log_set_level_inner(log_context_t *context, const logger_level level);
 static void log_set_fd_flags_inner(log_context_t *context, const int flags);
 static void log_set_rotate_time_format_inner(log_context_t *context, const char *time_format);
@@ -56,7 +56,7 @@ static void log_set_log_to_cache_inner(log_context_t *context, const bool log_to
 static int log_set_base_path_inner(log_context_t *context, const char *base_path);
 
 
-/* init shared logger context */
+// init shared logger context 
 int log_init() {
     if (shared_context.log_buf != NULL) {
         fprintf(stderr, "shared logger context already inited\n");
@@ -68,13 +68,13 @@ int log_init() {
 int log_do_init(log_context_t *context) {
     int result;
     memset(context, 0, sizeof(log_context_t));
-    /* default logger level */
+    // default logger level 
     context->level = LOGGER_INFO;
     context->log_fd = STDERR_FILENO;
     context->time_precision = LOG_TIME_PRECISION_SECOND;
     context->compress_log_days_before = 1;
     context->rotate_size = DEFAULT_ROTATE_SIZE;
-    /* set log base path current work path */
+    // set log base path current work path 
     strcpy(context->log_base_path, ".");
     strcpy(context->log_filename, "simplelog");
     strcpy(context->rotate_time_format, "%Y%m%d_%H%M%S");
@@ -117,7 +117,7 @@ static int log_open(log_context_t *context) {
     return 0;
 }
 
-/* make log directory */
+// make log directory 
 int log_check_and_mkdir(const char *base_path) {
     char data_path[MAX_BASE_SIZE];
     snprintf(data_path, sizeof(data_path), "%s/logs", base_path);
@@ -133,7 +133,7 @@ int log_check_and_mkdir(const char *base_path) {
 
 
 
-/* delete old file */
+// delete old file 
 /*
 static int log_delete_old_file(log_context_t *context, const char *old_filename) {
     char full_filename[MAX_PATH_SIZE + 128];
@@ -148,14 +148,14 @@ static int log_delete_old_file(log_context_t *context, const char *old_filename)
 }
 */
 
-/* do log rotate */
+// do log rotate 
 int log_do_rotate(log_context_t *context) {
     struct tm tm;
     time_t current_time;
     char old_filename[MAX_PATH_SIZE + 32];
     int len;
     int result;
-    /* if we are doing unit test, use time(2) to get current time. otherwise use cached time */
+    // if we are doing unit test, use time(2) to get current time. otherwise use cached time 
 #ifdef LOGGER_TEST
     current_time = time(NULL);
 #else
@@ -164,14 +164,14 @@ int log_do_rotate(log_context_t *context) {
     if (*(context->log_filename) == '\0') {
         return ENOENT;
     }
-    /* close current log file */
+    // close current log file 
     close(context->log_fd);
     
     localtime_r(&current_time, &tm);
     memset(old_filename, 0, sizeof(old_filename));
     len = sprintf(old_filename, "%s.", context->help_buf);
     strftime(old_filename + len, sizeof(old_filename) - len, context->rotate_time_format, &tm);
-    /* check if old file exists, then replace atomic */
+    // check if old file exists, then replace atomic 
     if (access(old_filename, F_OK) == 0) {
         fprintf(stderr, "file: %s already exist\n", old_filename);
     } else if (rename(context->help_buf, old_filename) != 0) {
@@ -182,7 +182,7 @@ int log_do_rotate(log_context_t *context) {
     return result;
 }
 
-/* check and rotate log */
+// check and rotate log 
 static int log_check_rotate(log_context_t *context) {
     if (context->log_fd == STDERR_FILENO) {
         if (context->current_size > 0) {
@@ -190,7 +190,7 @@ static int log_check_rotate(log_context_t *context) {
         }
         return 0;
     }
-    /* if rotate_immediately is set, do log rotate */
+    // if rotate_immediately is set, do log rotate 
     if (context->rotate_immediately) {
         context->rotate_immediately = 0;
         return log_do_rotate(context);
@@ -198,7 +198,7 @@ static int log_check_rotate(log_context_t *context) {
     return 0;
 }
 
-/* sync to log file */
+// sync to log file 
 static int log_fsync(log_context_t *context, const bool need_lock) {
     int result = 0;
     int write_bytes;
@@ -221,7 +221,7 @@ static int log_fsync(log_context_t *context, const bool need_lock) {
         pthread_mutex_lock(&context->log_thread_lock);
     }
     write_bytes = context->current - context->log_buf;
-    /* write to log file */
+    // write to log file 
     written = write(context->log_fd, context->log_buf, write_bytes);
     context->current = context->log_buf;
     if (written != write_bytes) {
@@ -243,7 +243,7 @@ static int log_fsync(log_context_t *context, const bool need_lock) {
     
 }
 
-/* do log */
+// do log 
 static void log_do_log(log_context_t *context, struct timeval *tv, const char *level_string, const char *text, const int text_len, const bool need_lock, const bool need_sync) {
     int time_fragment;
     struct tm tm;
@@ -267,11 +267,11 @@ static void log_do_log(log_context_t *context, struct timeval *tv, const char *l
         }
         return;
     }
-    /* if there is not enough buffer space, do fsync */
+    // if there is not enough buffer space, do fsync 
     if ((context->current - context->log_buf) + text_len + 64 > LOG_BUF_SIZE) {
         log_fsync(context, 0);
     }
-    /* format time */
+    // format time 
     if (context->time_precision != LOG_TIME_PRECISION_NONE) {
         localtime_r(&tv->tv_sec, &tm);
         if (context->time_precision == LOG_TIME_PRECISION_SECOND) {
@@ -281,7 +281,7 @@ static void log_do_log(log_context_t *context, struct timeval *tv, const char *l
         }
         context->current += len;
     }
-    /* log level */
+    // log level 
     if (level_string != NULL) {
         len = sprintf(context->current, "%s - ", level_string);
         context->current += len;
@@ -289,7 +289,7 @@ static void log_do_log(log_context_t *context, struct timeval *tv, const char *l
     memcpy(context->current, text, text_len);
     context->current += text_len;
     *context->current++ = '\n';
-    /* fsync if need */
+    // fsync if need 
     if (!context->log_to_cache || need_sync) {
         log_fsync(context, false);
     }
@@ -298,7 +298,7 @@ static void log_do_log(log_context_t *context, struct timeval *tv, const char *l
     }
 }
 
-/* wrapper function */
+// wrapper function 
 void log_log(log_context_t *context, const char *level_string, const char *text, const int text_len, const bool need_lock, const bool need_sync) {
     struct timeval tv;
     time_t current_time;
@@ -314,7 +314,7 @@ void log_log(log_context_t *context, const char *level_string, const char *text,
     }
     log_do_log(context, &tv, level_string, text, text_len, need_lock, need_sync);
 }
-/* log without format */
+// log without format 
 void log_log_text(log_context_t *context, const int priority, const char *text, const int text_len) {
     if (context->level < priority) {
         return;
@@ -326,7 +326,7 @@ void log_log_text(log_context_t *context, const int priority, const char *text, 
     log_log(context, level_string, text, text_len, true, need_sync);
 }
 
-/* log without format: macro form */
+// log without format: macro form 
 #define LOG_TEXT(context, priority, text, text_len) do { \
     if (context->level < priority) { \
         return; \
@@ -338,7 +338,7 @@ void log_log_text(log_context_t *context, const int priority, const char *text, 
     log_log(context, level_string, text, text_len, true, need_sync); \
     } while(0)
 
-/* log with format */
+// log with format 
 void log_log_textf(log_context_t *context, const int priority, const char *format, ...) {
     if (context->level < priority) {
         return;
@@ -362,7 +362,7 @@ void log_log_textf(log_context_t *context, const int priority, const char *forma
 
 }
 
-/* log with format: marco form */
+// log with format: marco form 
 #define LOG_TEXTF(context, priority) do { \
     if (context->level < priority) { \
         return; \
@@ -413,7 +413,7 @@ const char *log_get_level_string(log_context_t *context) {
 
 
 
-/* exported log functions */
+// exported log functions 
 void log_debug(const char *text) {
     LOG_TEXT((&shared_context), LOGGER_DEBUG, text, strlen(text));
 }
@@ -434,7 +434,7 @@ void log_fatal(const char *text) {
     LOG_TEXT((&shared_context), LOGGER_FATAL, text, strlen(text));
 }
 
-/* log functions with format */
+// log functions with format 
 void log_debugf(const char *format, ...) {
     LOG_TEXTF((&shared_context), LOGGER_DEBUG);
 }
@@ -455,12 +455,12 @@ void log_fatalf(const char *format, ...) {
     LOG_TEXTF((&shared_context), LOGGER_FATAL);
 }
 
-/* exported setters */
+// exported setters 
 void log_set_level(const logger_level level) {
     log_set_level_inner(&shared_context, level);
 }
 
-/* only called when log directory is already created */
+// only called when log directory is already created 
 int log_set_filename(const char *log_filename) {
     return log_set_filename_inner(&shared_context, log_filename);
 }
@@ -473,7 +473,7 @@ int log_set_base_path(const char *base_path) {
     return log_set_base_path_inner(&shared_context, base_path);
 }
 
-/* internal setters */
+// internal setters 
 static void log_set_level_inner(log_context_t *context, const logger_level level) {
     context->level = level;
 }

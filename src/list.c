@@ -1,6 +1,6 @@
 #include "cache.h"
 
-/* create a new list */
+// create a new list 
 list_t *list_create() {
     list_t *list;
     if ((list = malloc(sizeof(*list))) == NULL) {
@@ -13,7 +13,7 @@ list_t *list_create() {
     return list;
 }
 
-/* empty the list */
+// empty the list 
 void list_empty(list_t *list) {
     unsigned int len = list->len;
     list_node_t *current, *next;
@@ -30,7 +30,7 @@ void list_empty(list_t *list) {
     list->len = 0;
 }
 
-/* add a new node to the head of the list */
+// add a new node to the head of the list 
 bool list_add_node_head(list_t *list, void *value) {
     list_node_t *node;
     if ((node = malloc(sizeof(*node))) == NULL) {
@@ -50,7 +50,7 @@ bool list_add_node_head(list_t *list, void *value) {
     return true;
 }
 
-/* add a new node to the tail of list */
+// add a new node to the tail of list 
 bool list_add_node_tail(list_t *list, void *value) {
     list_node_t *node;
     if ((node = malloc(sizeof(*node))) == NULL) {
@@ -70,7 +70,7 @@ bool list_add_node_tail(list_t *list, void *value) {
     return true;
 }
 
-/* delete a node */
+// delete a node 
 void list_del_node(list_t *list, list_node_t *node) {
     if (node->prev) {
         node->prev->next = node->next;

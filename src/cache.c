@@ -1,17 +1,33 @@
 #include "cache.h"
 
-/* exported globals */
-struct settings settings;               /* settings */
-volatile rel_time_t g_rel_current_time;       /* current time */
+// exported globals 
+struct settings settings;               // settings 
+volatile rel_time_t g_rel_current_time;       // current time 
 
-/* static variables */
+// static variables 
 static struct event_base *main_base;
 static int stop_main_loop = NOT_STOP;
-static volatile sig_atomic_t sig_hup = 0;            /* a HUP signal received but not ye handled */
+static volatile sig_atomic_t sig_hup = 0;            // a HUP signal received but not ye handled 
 
+/**
+ * setup global configs
+ */
+int cache_config(cache_config_op op, ...) {
+    va_list ap;
+    int rc = CACHE_OK;
+    va_start(ap, op);
+    switch (op) {
+    case CACHE_CONFIG_ALLOC: {
+        settings.m = va_arg(ap, cache_mem_methods *);
+        break;
+    }
+    default: {
+        break;
+    }
+    }
+}
 
-
-/* remove pidfile */
+// remove pidfile 
 static void remove_pidfile(const char *pid_file) {
     if (pid_file == NULL) {
         return;
@@ -42,27 +58,41 @@ static void usage() {
            "-v  --version       print version message and exit\n"
            );
 }
+/*
+typedef struct test {
+    char arr[128];
+    int num;
+} test_t;
 
 int main(int argc, char **argv) {
-    int do_daemonize = 0;       /* daemonize */
-    int enable_core = 0;        /* generate core dump file */
+    cache_mem_set_default();
+    test_t *p = (*settings.m).mem_malloc(sizeof(test_t));
+    p->num = 4;
+    printf("num = %d\n", p->num);
+    (*settings.m).mem_free(p, sizeof(test_t));
+}
+*/
+/*
+int main(int argc, char **argv) {
+    int do_daemonize = 0;       // daemonize 
+    int enable_core = 0;        // generate core dump file 
     char *username = NULL;
     struct passwd *pw;
     struct rlimit rlim;
     int c;  
 
-    int retval = EXIT_SUCCESS;  /* return status */
+    int retval = EXIT_SUCCESS;  // return status 
 
-    /* handle signals */
+    // handle signals 
     signal(SIGINT, sig_handler);
     signal(SIGTERM, sig_handler);
     signal(SIGHUP, sighup_handler);
-    /* process arguments */
+    // process arguments 
     char *shortopts = 
-        "d"     /* daemon mode */
-        "h"     /* help */
-        "u:"    /* user identity to run as */
-        "v"     /* version */
+        "d"     // daemon mode 
+        "h"     // help 
+        "u:"    // user identity to run as 
+        "v"     // version 
         ;
 #ifdef HAVE_GETOPT_LONG
     const struct option longopts[] = {
@@ -99,29 +129,31 @@ int main(int argc, char **argv) {
     }
 
     if (enable_core != 0) {
-        struct rlimit rlim_new;
+        struct rlimit rlim_new;*/
         /**
          * first try raising to infinity;
          * if fails, try bringing the soft limit to the hard.
          */
+        /*
         if (getrlimit(RLIMIT_CORE, &rlim) == 0) {
             rlim_new.rlim_cur = rlim_new.rlim_max = RLIM_INFINITY;
             if (setrlimit(RLIMIT_CORE, &rlim_new) != 0) {
-                /* failed. try raising just to the old max */
+                // failed. try raising just to the old max 
                 rlim_new.rlim_cur = rlim_new.rlim_max = rlim.rlim_max;
                 setlimit(RLIMIT_CORE, &rlim_new);
             }
-        }
+        }*/
         /*
          * getrlimit again
          * fail if the soft limit is 0
          */
+        /*
         if ((getrlimit(RLIMIT_CORE, &rlim) != 0) || rlim.rlim_cur == 0) {
             fprintf(stderr, "failed to ensure corefile creation\n");
             exit(EX_OSERR);
         }
     }
-    /* lose root privileges if we have */
+    // lose root privileges if we have 
     if (getuid() == 0 || geteuid() == 0) {
         if (username == 0 || *username == '\0') {
             fprintf(stderr, "can't run as root without specify username\n");
@@ -143,10 +175,10 @@ int main(int argc, char **argv) {
             exit(EX_OSERR);
         }
     }
-    /* daemonize if requested */
-    /* if we want to ensure our ability to dump core, don't chdir to / */
+    // daemonize if requested 
+    // if we want to ensure our ability to dump core, don't chdir to / 
     if (do_daemonize) {
-        /* ignore SIGHUP if run as a daemon */
+        // ignore SIGHUP if run as a daemon 
         if (signal(SIGHUP, SIG_IGN)) {
             perror("failed to ignore SIGHUP");
         }
@@ -155,9 +187,9 @@ int main(int argc, char **argv) {
             exit(EXIT_FAILURE);
         }
     }
-    /* initialize main thread libevent instance */
+    // initialize main thread libevent instance 
 #if defined(LIBEVENT_VERSION_NUMBER) && LIBEVENT_VERSION_NUMBER >= 0X2000101
-    /* determine the init api according to libevent library version */
+    // determine the init api according to libevent library version 
     struct event_config *ev_config;
     ev_config = event_config_new();
     event_config_set_flag(ev_config, EVENT_BASE_FLAG_NOLOCK);
@@ -166,15 +198,14 @@ int main(int argc, char **argv) {
 #else
     main_base = event_init();
 #endif
-    /* ignore SIGPIPE signals */
+    // ignore SIGPIPE signals 
     if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
         perror("failed to ignore SIGPIPE; sigaction");
         exit(EX_OSERR);
     }
 
 
-
-    /* enter the event loop */
+    // enter the event loop 
     while(!stop_main_loop) {
         if (event_base_loop(main_base, EVLOOP_ONCE) != 0) {
             retval = EXIT_FAILURE;
@@ -183,15 +214,16 @@ int main(int argc, char **argv) {
     }
     switch (stop_main_loop) {
     case EXIT_NORMALLY:
-        /* normal shutdown */
+        // normal shutdown 
         break;
     default:
         fprintf(stderr, "exiting on error\n");
         break;
     }
 
-    /* cleanup base */
+    // cleanup base 
     event_base_free(main_base);
 
     return retval;
 }
+*/

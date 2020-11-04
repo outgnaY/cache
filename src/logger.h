@@ -10,7 +10,7 @@ typedef enum {
 } logger_level;
 
 
-/* exported log functions */
+// exported log functions 
 int log_init();
 int log_check_and_mkdir(const char *base_path);
 void log_set_level(const logger_level level);
