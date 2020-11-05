@@ -1,3 +1,5 @@
+#ifndef COMMON_DEFINE_H
+#define COMMON_DEFINE_H
 // common defines 
 #define VERSION 1.0
 
@@ -23,3 +25,11 @@ typedef enum {
  */
 #define ROUND8(n)   (((n) + 7) & ~7)
 #define ROUNDUP(n, align) ((((n) + (align) - 1) & ~((align) - 1)))
+
+// number of elements in array
+#define ARR_LENGTH(array) (sizeof(array) / sizeof((array)[0]))
+
+// address of the element one past the last in an array
+#define ENDOF(array) (&array[ARR_LENGTH(array)])
+
+#endif  // COMMON_DEFINE_H

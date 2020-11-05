@@ -1,0 +1,18 @@
+%{
+
+%}
+
+%union {
+
+}
+
+/* keywords */
+%token ALTER, AND, AS, ASC, BETWEEN, BY, CREATE, DATABASE, DELETE, DESC, DROP, FROM, GROUP,
+    HAVING, IN, INDEX, INSERT, INTO, IS, NOT, ORDER, SELECT, SET, TABLE, UPDATE, WHERE, ICONST, FCONST
+
+
+/* precedence */
+
+
+
+%%
