@@ -8,23 +8,34 @@ struct event;
 // states of a connection 
 typedef enum {
     conn_listening,
+    conn_new_cmd,
+    conn_read,
+    conn_closing,
+    conn_closed,
     conn_max_state,     // used to assert 
 } conn_states;
 // data structure representing a connection into cache 
 typedef struct conn conn;
+// export globals
+extern conn **conns;                // connection array 
+extern pthread_mutex_t conn_lock;   // connection lock
 
 
 struct conn {
     int sfd;                            // socket fd of the connection 
-    conn_states state;             // state of the connection 
+    conn_states state;                  // state of the connection 
     struct event event;                 // libevent event 
     short event_flags;                  // event flags 
     LIBEVENT_THREAD *thread;            // pointer to the thread object serving this connection 
     rel_time_t last_cmd_time;           // time for the last command to this connection 
+    short which;                        // which events were just triggered
+    conn *next;                         // used for generating a list of conn structures
 };
 
 // create a new connection 
 conn *conn_new(const int sfd, conn_states init_state, const short event_flags, struct event_base *base);
+
+void accept_new_conns(const bool do_accept);
 
 // close idle connection 
 void conn_close_idle(conn *c);

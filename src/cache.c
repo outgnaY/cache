@@ -1,13 +1,25 @@
 #include "cache.h"
 
 // exported globals 
-struct settings settings;               // settings 
-volatile rel_time_t g_rel_current_time;       // current time 
+struct settings settings;                       // settings 
+volatile rel_time_t g_rel_current_time;         // current time, second
+time_t process_started;                         // when the process was started
+struct event_base *main_base;                   // main thread event base
 
 // static variables 
-static struct event_base *main_base;
 static int stop_main_loop = NOT_STOP;
 static volatile sig_atomic_t sig_hup = 0;            // a HUP signal received but not ye handled 
+static struct event clockevent;
+
+// init global settings
+static void settings_init() {
+    settings.verbose = 1;
+    settings.num_threads = 4;
+    settings.maxconns = 1024;
+    settings.idle_timeout = 0;  // disabled
+    settings.backlog = 1024;
+    settings.maxconns_fast = true;
+}
 
 /**
  * setup global configs
@@ -26,6 +38,7 @@ int cache_config(cache_config_op op, ...) {
     }
     }
 }
+
 
 // remove pidfile 
 static void remove_pidfile(const char *pid_file) {
@@ -46,6 +59,120 @@ static void sighup_handler() {
     sig_hup = 1;
 }
 
+// update event on a connection
+bool update_event(conn *c, const int new_flags) {
+    assert(c != NULL);
+    struct event_base *base = c->event.ev_base;
+    if (c->event_flags == new_flags) {
+        return true;
+    }
+    if (event_del(&c->event) == -1) {
+        return false;
+    }
+    event_set(&c->event, c->sfd, new_flags, event_handler, (void *)c);
+    event_base_set(base, &c->event);
+    c->event_flags = new_flags;
+    if (event_add(&c->event, 0) == -1) {
+        return false;
+    }
+    return true;
+}
+
+void event_handler(const evutil_socket_t fd, const short which, void *arg) {
+    conn *c;
+    c = (conn *)arg;
+    assert(c != NULL);
+    c->which = which;
+    if (fd != c->sfd) {
+        if (settings.verbose > 0) {
+            fprintf(stderr, "event fd doesn't match conn fd\n");
+        }
+        conn_close(c);
+        return;
+    }
+    drive_machine(c);
+    return;
+}
+
+static void clock_handler(const evutil_socket_t fd, const short which, void *arg) {
+    struct timeval t = {.tv_sec = 1, .tv_usec = 0};
+    static bool initialized = false;
+    if (initialized) {
+        // delete the event if it's already exists
+        evtimer_del(&clockevent);
+    } else {
+        initialized = true;
+    }
+    // check HUP signal
+    if (sig_hup) {
+        sig_hup = false;
+    }
+    evtimer_set(&clockevent, clock_handler, 0);
+    event_base_set(main_base, &clockevent);
+    evtimer_add(&clockevent, &t);
+
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    g_rel_current_time = (rel_time_t) (tv.tv_sec - process_started);
+}
+
+// drive state machine
+void drive_machine(conn *c) {
+    bool stop = false;
+    int sfd;
+    socklen_t addrlen;
+    struct sockaddr_storage addr;
+    while (!stop) {
+        switch (c->state) {
+        case conn_listening:
+            addrlen = sizeof(addr);
+            sfd = accept(c->sfd, (struct sockaddr *)&addr, &addrlen);
+            if (sfd == -1) {
+                if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                    stop = true;
+                } else if (errno == EMFILE) {
+                    if (settings.verbose > 0) {
+                        fprintf(stderr, "too many open connections\n");
+                    }
+                    accept_new_conns(false);
+                    stop = true;
+                } else {
+                    perror("accept()");
+                    stop = true;
+                }
+                break;
+            }
+            if (fcntl(sfd, F_SETFL, fcntl(sfd, F_GETFL) | O_NONBLOCK) < 0) {
+                perror("setting O_NONBLOCK");
+                close(sfd);
+                break;
+            }
+            bool reject = false;
+            /*
+            if (settings.maxconns_fast) {
+                reject = 
+            } else {
+                reject = false;
+            }*/
+            if (reject) {
+
+            } else {
+                dispatch_conn_new(sfd, conn_new_cmd, EV_READ | EV_PERSIST);
+            }
+            stop = true;
+            break;
+        case conn_closing:
+            conn_close(c);
+            stop = true;
+            break;
+        case conn_closed:
+            abort();
+            break;
+        }
+    }
+    return;
+}
+
 static void version() {
     printf("in-memory cache service. version %d\n", VERSION);
 }
@@ -58,6 +185,12 @@ static void usage() {
            "-v  --version       print version message and exit\n"
            );
 }
+/*
+static int server_sockets() {
+
+}
+*/
+
 /*
 typedef struct test {
     char arr[128];
@@ -72,7 +205,7 @@ int main(int argc, char **argv) {
     (*settings.m).mem_free(p, sizeof(test_t));
 }
 */
-/*
+
 int main(int argc, char **argv) {
     int do_daemonize = 0;       // daemonize 
     int enable_core = 0;        // generate core dump file 
@@ -87,6 +220,8 @@ int main(int argc, char **argv) {
     signal(SIGINT, sig_handler);
     signal(SIGTERM, sig_handler);
     signal(SIGHUP, sighup_handler);
+    // init settings
+    settings_init();
     // process arguments 
     char *shortopts = 
         "d"     // daemon mode 
@@ -129,12 +264,12 @@ int main(int argc, char **argv) {
     }
 
     if (enable_core != 0) {
-        struct rlimit rlim_new;*/
+        struct rlimit rlim_new;
         /**
          * first try raising to infinity;
          * if fails, try bringing the soft limit to the hard.
          */
-        /*
+        
         if (getrlimit(RLIMIT_CORE, &rlim) == 0) {
             rlim_new.rlim_cur = rlim_new.rlim_max = RLIM_INFINITY;
             if (setrlimit(RLIMIT_CORE, &rlim_new) != 0) {
@@ -142,12 +277,12 @@ int main(int argc, char **argv) {
                 rlim_new.rlim_cur = rlim_new.rlim_max = rlim.rlim_max;
                 setlimit(RLIMIT_CORE, &rlim_new);
             }
-        }*/
+        }
         /*
          * getrlimit again
          * fail if the soft limit is 0
          */
-        /*
+        
         if ((getrlimit(RLIMIT_CORE, &rlim) != 0) || rlim.rlim_cur == 0) {
             fprintf(stderr, "failed to ensure corefile creation\n");
             exit(EX_OSERR);
@@ -198,12 +333,15 @@ int main(int argc, char **argv) {
 #else
     main_base = event_init();
 #endif
+
+    process_started = time(0);
     // ignore SIGPIPE signals 
     if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
         perror("failed to ignore SIGPIPE; sigaction");
         exit(EX_OSERR);
     }
 
+    clock_handler(0, 0, 0);
 
     // enter the event loop 
     while(!stop_main_loop) {
@@ -226,4 +364,3 @@ int main(int argc, char **argv) {
 
     return retval;
 }
-*/

@@ -49,9 +49,9 @@ UPDATE                              { return UPDATE; }
 WHERE                               { return WHERE; }
 
          
-    /* numbers */
+    /* integer */
 -?[0-9]+                            { yylval.intval = atoi(yytext); return INTNUM; }
-
+    /* float */
 -?[0-9]+"."[0-9]* |
 -?"."[0-9]+ |
 -?[0-9]+E[-+]?[0-9]+ |

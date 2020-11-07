@@ -11,17 +11,17 @@ TEST=$(SDIR)/test
 PARSE = $(SDIR)/parse
 
 
-all: test_event test_logger0 test_lex
+all: test_event test_logger0 
 test_event: $(ODIR)/test_event.o
 	$(CC) $(OPTIONS) $(BDIR)/test_event $^ $(LIBEVENT)
 test_logger0: $(ODIR)/test_logger0.o $(ODIR)/logger0.o $(ODIR)/util.o 
 	$(CC) $(OPTIONS) $(BDIR)/test_logger0 $^ 
 #test_mem2: $(ODIR)/test_mem2.o 
 #	$(CC) $(OPTIONS) $(BDIR)/test_mem2 $^
-#main: $(ODIR)/cache.o $(ODIR)/mem0.o $(ODIR)/mem1.o $(ODIR)/mem2.o 
-#	$(CC) $(OPTIONS) $(BDIR)/main $^
 test_lex: $(ODIR)/test_lex.o $(ODIR)/lex.yy.o
 	$(CC) $(OPTIONS) $(BDIR)/test_lex $^ 
+main: $(ODIR)/cache.o $(ODIR)/connection.o $(ODIR)/thread.o
+	$(CC) $(OPTIONS) $(BDIR)/main $^ $(LIBEVENT)
 
 
 $(ODIR)/test_event.o: $(TEST)/test_event.c
@@ -40,6 +40,10 @@ $(ODIR)/util.o: $(SDIR)/util.c
 #	$(CC) $(CFLAGS) $< $(OPTIONS) $@
 $(ODIR)/cache.o: $(SDIR)/cache.c
 	$(CC) $(CFLAGS) $< $(OPTIONS) $@
+$(ODIR)/connection.o: $(SDIR)/connection.c
+	$(CC) $(CFLAGS) $< $(OPTIONS) $@ $(LIBEVENT)
+$(ODIR)/thread.o: $(SDIR)/thread.c
+	$(CC) $(CFLAGS) $< $(OPTIONS) $@ $(LIBEVENT)
 $(ODIR)/test_lex.o: $(TEST)/test_lex.c
 	$(CC) $(CFLAGS) $< $(OPTIONS) $@
 

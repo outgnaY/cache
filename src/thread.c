@@ -23,6 +23,9 @@ struct conn_queue {
 static CQ_ITEM *cq_item_freelist;
 static pthread_mutex_t cq_item_freelist_lock;
 
+// lock to cause worker threads to hang up after being woken
+static pthread_mutex_t worker_hang_lock;
+
 // libevent threads 
 static LIBEVENT_THREAD *threads;
 /*
@@ -31,6 +34,7 @@ static LIBEVENT_THREAD *threads;
 static int init_count = 0;
 static pthread_mutex_t init_lock;
 static pthread_cond_t init_cond;
+
 
 // initializes a connection queue 
 static void cq_init(CQ *cq) {
@@ -120,6 +124,10 @@ static void register_thread_initialized(void) {
     init_count++;
     pthread_cond_signal(&init_cond);
     pthread_mutex_unlock(&init_lock);
+    // force worker threads to pile up 
+    pthread_mutex_lock(&worker_hang_lock);
+    pthread_mutex_unlock(&worker_hang_lock);
+
 }
 
 // creates a worker thread 
@@ -141,9 +149,13 @@ static void thread_libevent_process(evutil_socket_t fd, short which, void *arg) 
     LIBEVENT_THREAD *this = arg;
     CQ_ITEM *item;
     char buf[1];
+    conn *c;
+    unsigned int fd_from_pipe;
 
     if (read(fd, buf, 1) != 1) {
-        fprintf(stderr, "can't read from libevent pipe\n");
+        if (settings.verbose > 0) {
+            fprintf(stderr, "can't read from libevent pipe\n");
+        }
         return;
     }
     switch (buf[0]) {
@@ -158,9 +170,31 @@ static void thread_libevent_process(evutil_socket_t fd, short which, void *arg) 
             break;
         }
         // setup a new connection 
-        
+        c = conn_new(item->sfd, item->init_state, item->event_flags, this->base);
+        if (c == NULL) {
+            if (settings.verbose > 0) {
+                fprintf(stderr, "can't listen for events on fd %d\n", item->sfd);
+            }
+            close(item->sfd);
+        } else {
+            c->thread = this;
+        }
         // free the item 
         cq_free_item(item);
+        break;
+    // a client socket timed out
+    case 't':
+        if (read(fd, &fd_from_pipe, sizeof(fd_from_pipe)) != sizeof(fd_from_pipe)) {
+            if (settings.verbose > 0) {
+                fprintf(stderr, "can't read timeout fd from pipe\n");
+                return;
+            }
+        }
+        conn_close_idle(conns[fd_from_pipe]);
+        break;
+    // asked to stop
+    case 's':
+        event_base_loopexit(this->base, NULL);
         break;
     default:
         break;
@@ -198,6 +232,41 @@ void dispatch_conn_new(int sfd, conn_states init_state, int event_flags) {
     if (write(thread->notify_send_fd, buf, 1) != 1) {
         perror("writing to thread notify pipe");
     }
+}
+
+/**
+ * stop all worker threads
+ * must be called only by parent thread
+ */
+void stop_threads() {
+    char buf[1];
+    int i;
+    if (settings.verbose > 0) {
+        fprintf(stderr, "asking workers to stop\n");
+    }
+    buf[0] = 's';
+    pthread_mutex_lock(&worker_hang_lock);
+    pthread_mutex_lock(&init_lock);
+    init_count = 0;
+    for (i = 0; i < settings.num_threads; i++) {
+        if (write(threads[i].notify_send_fd, buf, 1) != 1) {
+            perror("failed writing to notify pipe");
+        }
+    }
+    wait_for_thread_registration(settings.num_threads);
+    pthread_mutex_unlock(&init_lock);
+    // stop connection timeout check thread
+    stop_conn_timeout_thread();
+    // close all connections
+    conn_close_all();
+    pthread_mutex_unlock(&worker_hang_lock);
+    for (i = 0; i < settings.num_threads; i++) {
+        pthread_join(threads[i].thread_id, NULL);
+    }
+    if (settings.verbose > 0) {
+        fprintf(stderr, "all background threads stopped\n");
+    }
+    
 }
 
 // setup a thread's information 
@@ -249,6 +318,7 @@ static void *worker_mainloop(void *arg) {
 // initializes the threads 
 void cache_thread_init(int nthreads, void *arg) {
     int i;
+    pthread_mutex_init(&worker_hang_lock, NULL);
     // init lock for worker threads 
     pthread_mutex_init(&init_lock, NULL);
     pthread_cond_init(&init_cond, NULL);

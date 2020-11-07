@@ -17,6 +17,7 @@
 #include <syslog.h>
 #include <sys/stat.h>
 #include <sys/file.h>
+#include <sys/socket.h>
 
 #include <event.h>
 
@@ -49,16 +50,21 @@ typedef struct libevent_thread LIBEVENT_THREAD;
 
 // global settings 
 struct settings {
+    int verbose;
     int item_size_max;      // maximum item size 
     int num_threads;        // number of worker threads 
     int maxconns;           // max connections opened simultaneously 
     int idle_timeout;       // number of cseconds to let connections idle 
-    cache_mem_methods *m;    // memory related methods
+    int backlog;
+    bool maxconns_fast;     // whether or not to close conenctions early
+    cache_mem_methods *m;   // memory related methods
 };
 // exported globals 
 extern struct settings settings;
 extern volatile rel_time_t g_rel_current_time;        // how many seconds since process started 
-extern volatile time_t g_current_time;                // global time stamp 
+// extern volatile time_t g_current_time;             // global time stamp 
+extern time_t process_started;                        // when the process was started
+extern struct event_base *main_base;                  // main thread event base
 
 // stored item structure 
 typedef struct item {
@@ -96,6 +102,9 @@ void cache_mem_set_default(void);
  */
 void cache_thread_init(int nthreads, void *arg);
 void dispatch_conn_new(int sfd, conn_states init_state, int event_flags);
+
+bool update_event(conn *c, const int new_flags);
+void event_handler(const evutil_socket_t fd, const short which, void *arg);
 
 
 
