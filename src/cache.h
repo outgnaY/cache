@@ -18,6 +18,11 @@
 #include <sys/stat.h>
 #include <sys/file.h>
 #include <sys/socket.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <grp.h>
+#include <netinet/tcp.h>
+#include <limits.h>
 
 #include <event.h>
 
@@ -57,6 +62,7 @@ struct settings {
     int idle_timeout;       // number of cseconds to let connections idle 
     int backlog;
     bool maxconns_fast;     // whether or not to close conenctions early
+    int port;
     cache_mem_methods *m;   // memory related methods
 };
 // exported globals 
@@ -92,9 +98,8 @@ int cache_config(cache_config_op op, ...);
 
 void cache_mem_set_default(void);
 
-/* 
- * functions related to connection
- */
+// drive state machine
+void drive_machine(conn *c);
 
 
 /*

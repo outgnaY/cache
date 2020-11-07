@@ -19,6 +19,7 @@ typedef struct conn conn;
 // export globals
 extern conn **conns;                // connection array 
 extern pthread_mutex_t conn_lock;   // connection lock
+extern conn *listen_conn;
 
 
 struct conn {
@@ -32,10 +33,16 @@ struct conn {
     conn *next;                         // used for generating a list of conn structures
 };
 
+// init conns
+void conn_init(void);
+
 // create a new connection 
 conn *conn_new(const int sfd, conn_states init_state, const short event_flags, struct event_base *base);
 
 void accept_new_conns(const bool do_accept);
+
+// close a connetion
+void conn_close(conn *c);
 
 // close idle connection 
 void conn_close_idle(conn *c);
@@ -43,7 +50,10 @@ void conn_close_idle(conn *c);
 // close all connections
 void conn_close_all(void);
 
-// stop connection timeout thread 
+// start thread for timeout checking
+int start_conn_timeout_thread();
+
+// stop thread for timeout checking 
 int stop_conn_timeout_thread(void);
 
 

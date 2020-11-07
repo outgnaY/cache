@@ -3,6 +3,7 @@ CC=gcc
 CFLAGS=-c -Wall -O -g -I $(DEPS)/libevent/include
 OPTIONS=-o 
 LIBEVENT=-I $(DEPS)/libevent/include -L $(DEPS)/libevent/lib -levent
+PTHREAD = -lpthread
 DEPS=$(PWD)/deps
 ODIR=$(PWD)/obj
 SDIR=$(PWD)/src
@@ -11,7 +12,7 @@ TEST=$(SDIR)/test
 PARSE = $(SDIR)/parse
 
 
-all: test_event test_logger0 
+all: test_event test_logger0 main
 test_event: $(ODIR)/test_event.o
 	$(CC) $(OPTIONS) $(BDIR)/test_event $^ $(LIBEVENT)
 test_logger0: $(ODIR)/test_logger0.o $(ODIR)/logger0.o $(ODIR)/util.o 
@@ -20,8 +21,8 @@ test_logger0: $(ODIR)/test_logger0.o $(ODIR)/logger0.o $(ODIR)/util.o
 #	$(CC) $(OPTIONS) $(BDIR)/test_mem2 $^
 test_lex: $(ODIR)/test_lex.o $(ODIR)/lex.yy.o
 	$(CC) $(OPTIONS) $(BDIR)/test_lex $^ 
-main: $(ODIR)/cache.o $(ODIR)/connection.o $(ODIR)/thread.o
-	$(CC) $(OPTIONS) $(BDIR)/main $^ $(LIBEVENT)
+main: $(ODIR)/cache.o $(ODIR)/connection.o $(ODIR)/thread.o $(ODIR)/util.o $(ODIR)/daemon.o
+	$(CC) $(OPTIONS) $(BDIR)/main $^ $(LIBEVENT) $(PTHREAD)
 
 
 $(ODIR)/test_event.o: $(TEST)/test_event.c
@@ -45,6 +46,8 @@ $(ODIR)/connection.o: $(SDIR)/connection.c
 $(ODIR)/thread.o: $(SDIR)/thread.c
 	$(CC) $(CFLAGS) $< $(OPTIONS) $@ $(LIBEVENT)
 $(ODIR)/test_lex.o: $(TEST)/test_lex.c
+	$(CC) $(CFLAGS) $< $(OPTIONS) $@
+$(ODIR)/daemon.o: $(SDIR)/daemon.c
 	$(CC) $(CFLAGS) $< $(OPTIONS) $@
 
 .PHONY: clean

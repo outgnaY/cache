@@ -2,11 +2,8 @@
 
 // forward declarations 
 static void conn_cleanup(conn *c);
-static void conn_close(conn *c);
-static void conn_init(void);
 static void conn_free(conn *c);
 static void *conn_timeout_thread(void *arg);
-static int start_conn_timeout_thread();
 
 // static variables 
 static int max_fds;                                 // maximum fds 
@@ -14,7 +11,11 @@ static volatile int do_run_conn_timeout_thread;     // timeout thread run flag
 static pthread_t conn_timeout_tid;                  // thread id of timeout thread 
 static volatile bool allow_new_conns = true;        // controls if we allow new connections
 static struct event maxconnsevent;
-static conn *listen_conn = NULL;
+
+// exported globals 
+conn **conns;                                           // connection array
+pthread_mutex_t conn_lock = PTHREAD_MUTEX_INITIALIZER;   
+conn *listen_conn = NULL;
 
 static void maxconns_handler(const evutil_socket_t fd, const short which, void *arg) {
     struct timeval t = {.tv_sec = 0, .tv_usec = 10000};
@@ -58,14 +59,12 @@ void do_accept_new_conns(const bool do_accept) {
         maxconns_handler(-42, 0, 0);
     }
 }
-
-// exported globals 
-conn **conns;                                           // connection array
-pthread_mutex_t conn_lock = PTHREAD_MUTEX_INITIALIZER;     
+  
 
 // create a new connection
 conn *conn_new(const int sfd, conn_states init_state, const short event_flags, struct event_base *base) {
     conn *c;
+    // printf("conn_new: fd = %d, max_fds = %d\n", sfd, max_fds);
     assert(sfd >= 0 && sfd < max_fds);
     c = conns[sfd];
     if (c == NULL) {
@@ -100,7 +99,7 @@ static void conn_cleanup(conn *c) {
 
 
 // close a connection 
-static void conn_close(conn *c) {
+void conn_close(conn *c) {
     assert(c != NULL);
     // delete the event, the socket and the conn
     event_del(&c->event);
@@ -139,7 +138,6 @@ void conn_close_idle(conn *c) {
 // close all connections 
 void conn_close_all(void) {
     int i;
-    
     for (i = 0; i < max_fds; i++) {
         if (conns[i] && conns[i]->state != conn_closed) {
             conn_close(conns[i]);
@@ -148,7 +146,7 @@ void conn_close_all(void) {
 }
 
 // initializes the connections array 
-static void conn_init(void) {
+void conn_init(void) {
     int next_fd = dup(1);
     if (next_fd < 0) {
         perror("failed to duplicate file descriptor");
@@ -231,7 +229,7 @@ static void *conn_timeout_thread(void *arg) {
     return NULL;
 }
 
-static int start_conn_timeout_thread() {
+int start_conn_timeout_thread() {
     int ret;
     if (settings.idle_timeout == 0) {
         return -1;

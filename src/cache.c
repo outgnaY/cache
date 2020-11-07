@@ -19,6 +19,7 @@ static void settings_init() {
     settings.idle_timeout = 0;  // disabled
     settings.backlog = 1024;
     settings.maxconns_fast = true;
+    settings.port = 6666;
 }
 
 /**
@@ -185,11 +186,107 @@ static void usage() {
            "-v  --version       print version message and exit\n"
            );
 }
-/*
-static int server_sockets() {
+
+static int new_socket(struct addrinfo *ai) {
+    int sfd;
+    int flags;
+    if ((sfd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol)) == -1) {
+        return -1;
+    }
+    if ((flags = fcntl(sfd, F_GETFL, 0)) < 0 || fcntl(sfd, F_SETFL, flags | O_NONBLOCK) < 0) {
+        perror("setting O_NONBLOCK");
+        close(sfd);
+        return -1;
+    }
+    return sfd;
+}
+
+// start listen on port
+static int server_socket(int port) {
+    int sfd;
+    struct linger ling = {0, 0};
+    struct addrinfo *ai;
+    struct addrinfo *next;
+    struct addrinfo hints = {.ai_flags = AI_PASSIVE, .ai_family = AF_UNSPEC};
+    char port_buf[NI_MAXSERV];
+    int error;
+    int success = 0;
+    int flags = 1;
+    hints.ai_socktype = SOCK_STREAM;
+    if (port == -1) {
+        port = 0;
+    }
+    snprintf(port_buf, sizeof(port_buf), "%d", port);
+    error = getaddrinfo(NULL, port_buf, &hints, &ai);
+    if (error != 0) {
+        if (error != EAI_SYSTEM) {
+            fprintf(stderr, "getaddrinfo(): %s\n", gai_strerror(error));
+        } else {
+            perror("getaddrinfo()");
+        }
+        return 1;
+    }
+    for (next = ai; next; next = next->ai_next) {
+        conn *listen_conn_add;
+        if ((sfd = new_socket(next)) == -1) {
+            if (errno == EMFILE) {
+                perror("server_socket");
+                exit(EX_OSERR);
+            }
+            continue;
+        }
+        setsockopt(sfd, SOL_SOCKET, SO_REUSEADDR, (void *)&flags, sizeof(flags));
+        error = setsockopt(sfd, SOL_SOCKET, SO_KEEPALIVE, (void *)&flags, sizeof(flags));
+        if (error != 0) {
+            perror("setsockopt");
+        }
+        error = setsockopt(sfd, SOL_SOCKET, SO_LINGER, (void *)&ling, sizeof(ling));
+        if (error != 0) {
+            perror("setsockopt");
+        }
+        error = setsockopt(sfd, IPPROTO_TCP, TCP_NODELAY, (void *)&flags, sizeof(flags));
+        if (error != 0) {
+            perror("setsockopt");
+        }
+        // bind
+        if (bind(sfd, next->ai_addr, next->ai_addrlen) == -1) {
+            if (errno != EADDRINUSE) {
+                perror("bind()");
+                close(sfd);
+                freeaddrinfo(ai);
+                return 1;
+            }
+            close(sfd);
+            continue;
+        } else {
+            success++;
+            // listen
+            if (listen(sfd, settings.backlog) == -1) {
+                perror("listen()");
+                close(sfd);
+                freeaddrinfo(ai);
+                return 1;
+            }
+        }
+        if (!(listen_conn_add = conn_new(sfd, conn_listening, EV_READ | EV_PERSIST, main_base))) {
+            fprintf(stderr, "failed to create listening connecton\n");
+            exit(EXIT_FAILURE);
+        }
+        listen_conn_add->next = listen_conn;
+        listen_conn = listen_conn_add;
+    }
+    freeaddrinfo(ai);
+
+    return success == 0;
 
 }
-*/
+
+static int server_sockets(int port) {
+    return server_socket(port);
+}
+
+
+
 
 /*
 typedef struct test {
@@ -275,7 +372,7 @@ int main(int argc, char **argv) {
             if (setrlimit(RLIMIT_CORE, &rlim_new) != 0) {
                 // failed. try raising just to the old max 
                 rlim_new.rlim_cur = rlim_new.rlim_max = rlim.rlim_max;
-                setlimit(RLIMIT_CORE, &rlim_new);
+                setrlimit(RLIMIT_CORE, &rlim_new);
             }
         }
         /*
@@ -334,6 +431,8 @@ int main(int argc, char **argv) {
     main_base = event_init();
 #endif
 
+    conn_init();
+
     process_started = time(0);
     // ignore SIGPIPE signals 
     if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
@@ -341,7 +440,16 @@ int main(int argc, char **argv) {
         exit(EX_OSERR);
     }
 
+    if (settings.idle_timeout > 0 && start_conn_timeout_thread() == -1) {
+        exit(EXIT_FAILURE);
+    }
+
     clock_handler(0, 0, 0);
+
+    if (server_sockets(settings.port)) {
+        vperror("failed to listen on TCP port %d", settings.port);
+        exit(EX_OSERR);
+    }
 
     // enter the event loop 
     while(!stop_main_loop) {
