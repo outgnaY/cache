@@ -58,4 +58,4 @@ int stop_conn_timeout_thread(void);
 
 
 
-#endif
+#endif  // CONNECTION_H

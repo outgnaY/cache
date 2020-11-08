@@ -16,7 +16,7 @@ static void settings_init() {
     settings.verbose = 1;
     settings.num_threads = 4;
     settings.maxconns = 1024;
-    settings.idle_timeout = 0;  // disabled
+    settings.idle_timeout = 20;  // disabled by default
     settings.backlog = 1024;
     settings.maxconns_fast = true;
     settings.port = 6666;
@@ -58,6 +58,7 @@ static void sig_handler(const int sig) {
 
 static void sighup_handler() {
     sig_hup = 1;
+    printf("catch SIGHUP\n");
 }
 
 // update event on a connection
@@ -80,6 +81,7 @@ bool update_event(conn *c, const int new_flags) {
 }
 
 void event_handler(const evutil_socket_t fd, const short which, void *arg) {
+    printf("event handler, fd = %d\n", fd);
     conn *c;
     c = (conn *)arg;
     assert(c != NULL);
@@ -115,18 +117,23 @@ static void clock_handler(const evutil_socket_t fd, const short which, void *arg
     struct timeval tv;
     gettimeofday(&tv, NULL);
     g_rel_current_time = (rel_time_t) (tv.tv_sec - process_started);
+    // printf("rel time = %d\n", g_rel_current_time);
 }
 
 // drive state machine
 void drive_machine(conn *c) {
+    // char buf[1000];
+    // int n;
     bool stop = false;
     int sfd;
     socklen_t addrlen;
-    struct sockaddr_storage addr;
+    // struct sockaddr_storage addr;
+    struct sockaddr_in addr;
     while (!stop) {
         switch (c->state) {
         case conn_listening:
             addrlen = sizeof(addr);
+            bzero(&addr, addrlen);
             sfd = accept(c->sfd, (struct sockaddr *)&addr, &addrlen);
             if (sfd == -1) {
                 if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -139,6 +146,7 @@ void drive_machine(conn *c) {
                     stop = true;
                 } else {
                     perror("accept()");
+                    printf("accept, fd = %d, sfd = %d, errno = %d\n", sfd, c->sfd, errno);
                     stop = true;
                 }
                 break;
@@ -168,6 +176,11 @@ void drive_machine(conn *c) {
             break;
         case conn_closed:
             abort();
+            break;
+        default:
+            // n = read(c->sfd, buf, 1000);
+            // printf("n = %d\n", n);
+            stop = true;
             break;
         }
     }
@@ -235,6 +248,7 @@ static int server_socket(int port) {
             }
             continue;
         }
+        printf("server fd = %d\n", sfd);
         setsockopt(sfd, SOL_SOCKET, SO_REUSEADDR, (void *)&flags, sizeof(flags));
         error = setsockopt(sfd, SOL_SOCKET, SO_KEEPALIVE, (void *)&flags, sizeof(flags));
         if (error != 0) {
@@ -256,6 +270,7 @@ static int server_socket(int port) {
                 freeaddrinfo(ai);
                 return 1;
             }
+            printf("bind errno = %d\n", errno);
             close(sfd);
             continue;
         } else {
@@ -267,13 +282,17 @@ static int server_socket(int port) {
                 freeaddrinfo(ai);
                 return 1;
             }
+            printf("bind listen success\n");
         }
+        // main thread listen
+        printf("main thread new connection, sfd = %d\n", sfd);
         if (!(listen_conn_add = conn_new(sfd, conn_listening, EV_READ | EV_PERSIST, main_base))) {
             fprintf(stderr, "failed to create listening connecton\n");
             exit(EXIT_FAILURE);
         }
         listen_conn_add->next = listen_conn;
         listen_conn = listen_conn_add;
+        break;       // for debug
     }
     freeaddrinfo(ai);
 
@@ -431,8 +450,10 @@ int main(int argc, char **argv) {
     main_base = event_init();
 #endif
 
+    // init connection structure
     conn_init();
 
+    // set process start time
     process_started = time(0);
     // ignore SIGPIPE signals 
     if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
@@ -440,10 +461,13 @@ int main(int argc, char **argv) {
         exit(EX_OSERR);
     }
 
+    // init libevent threads
+    cache_thread_init(settings.num_threads, NULL);
+    // init timeout checking thread
     if (settings.idle_timeout > 0 && start_conn_timeout_thread() == -1) {
         exit(EXIT_FAILURE);
     }
-
+    // init clock handler
     clock_handler(0, 0, 0);
 
     if (server_sockets(settings.port)) {
@@ -466,7 +490,8 @@ int main(int argc, char **argv) {
         fprintf(stderr, "exiting on error\n");
         break;
     }
-
+    // stop worker threads
+    stop_threads();
     // cleanup base 
     event_base_free(main_base);
 

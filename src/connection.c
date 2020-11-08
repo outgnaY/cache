@@ -7,7 +7,7 @@ static void *conn_timeout_thread(void *arg);
 
 // static variables 
 static int max_fds;                                 // maximum fds 
-static volatile int do_run_conn_timeout_thread;     // timeout thread run flag 
+static volatile bool do_run_conn_timeout_thread;     // timeout thread run flag 
 static pthread_t conn_timeout_tid;                  // thread id of timeout thread 
 static volatile bool allow_new_conns = true;        // controls if we allow new connections
 static struct event maxconnsevent;
@@ -31,6 +31,7 @@ static void maxconns_handler(const evutil_socket_t fd, const short which, void *
 }
 
 void accept_new_conns(const bool do_accept) {
+    printf("accept new conns\n");
     pthread_mutex_lock(&conn_lock);
     do_accept_new_conns(do_accept);
     pthread_mutex_unlock(&conn_lock);
@@ -64,7 +65,7 @@ void do_accept_new_conns(const bool do_accept) {
 // create a new connection
 conn *conn_new(const int sfd, conn_states init_state, const short event_flags, struct event_base *base) {
     conn *c;
-    // printf("conn_new: fd = %d, max_fds = %d\n", sfd, max_fds);
+    printf("conn_new: fd = %d\n", sfd);
     assert(sfd >= 0 && sfd < max_fds);
     c = conns[sfd];
     if (c == NULL) {
@@ -79,6 +80,7 @@ conn *conn_new(const int sfd, conn_states init_state, const short event_flags, s
 
     }
     */
+    c->state = init_state;
     // initialize for idle kicker
     c->last_cmd_time = g_rel_current_time;
     // setup event 
@@ -234,7 +236,7 @@ int start_conn_timeout_thread() {
     if (settings.idle_timeout == 0) {
         return -1;
     }
-    do_run_conn_timeout_thread = 1;
+    do_run_conn_timeout_thread = true;
     if ((ret = pthread_create(&conn_timeout_tid, NULL, conn_timeout_thread, NULL)) != 0) {
         fprintf(stderr, "can't create idle connection timeout thread: %s\n", STRERROR(ret));
         return -1;
@@ -246,7 +248,7 @@ int stop_conn_timeout_thread(void) {
     if (!do_run_conn_timeout_thread) {
         return -1;
     }
-    do_run_conn_timeout_thread = 0;
+    do_run_conn_timeout_thread = false;
     pthread_join(conn_timeout_tid, NULL);
     return 0;
 }
@@ -254,13 +256,14 @@ int stop_conn_timeout_thread(void) {
 
 
 // convert a state name to a human readable form 
+/*
 static const char *state_text(conn_states state) {
     const char* const statenames[] = {
         "conn_listening"
     };
     return statenames[state];
 }
-
+*/
 // sets a conenction's current state in the state machine 
 void conn_set_state(conn *c, conn_states state) {
     assert(c != NULL);

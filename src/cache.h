@@ -18,6 +18,7 @@
 #include <sys/stat.h>
 #include <sys/file.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <grp.h>
@@ -105,8 +106,9 @@ void drive_machine(conn *c);
 /*
  * functions that are libevent-related
  */
-void cache_thread_init(int nthreads, void *arg);
-void dispatch_conn_new(int sfd, conn_states init_state, int event_flags);
+extern void cache_thread_init(int nthreads, void *arg);
+extern void stop_threads();
+extern void dispatch_conn_new(int sfd, conn_states init_state, int event_flags);
 
 bool update_event(conn *c, const int new_flags);
 void event_handler(const evutil_socket_t fd, const short which, void *arg);

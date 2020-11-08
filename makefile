@@ -12,7 +12,7 @@ TEST=$(SDIR)/test
 PARSE = $(SDIR)/parse
 
 
-all: test_event test_logger0 main
+all: test_event test_logger0 test_server main
 test_event: $(ODIR)/test_event.o
 	$(CC) $(OPTIONS) $(BDIR)/test_event $^ $(LIBEVENT)
 test_logger0: $(ODIR)/test_logger0.o $(ODIR)/logger0.o $(ODIR)/util.o 
@@ -21,6 +21,8 @@ test_logger0: $(ODIR)/test_logger0.o $(ODIR)/logger0.o $(ODIR)/util.o
 #	$(CC) $(OPTIONS) $(BDIR)/test_mem2 $^
 test_lex: $(ODIR)/test_lex.o $(ODIR)/lex.yy.o
 	$(CC) $(OPTIONS) $(BDIR)/test_lex $^ 
+test_server: $(ODIR)/test_server.o 
+	$(CC) $(OPTIONS) $(BDIR)/test_server $^
 main: $(ODIR)/cache.o $(ODIR)/connection.o $(ODIR)/thread.o $(ODIR)/util.o $(ODIR)/daemon.o
 	$(CC) $(OPTIONS) $(BDIR)/main $^ $(LIBEVENT) $(PTHREAD)
 
@@ -48,6 +50,8 @@ $(ODIR)/thread.o: $(SDIR)/thread.c
 $(ODIR)/test_lex.o: $(TEST)/test_lex.c
 	$(CC) $(CFLAGS) $< $(OPTIONS) $@
 $(ODIR)/daemon.o: $(SDIR)/daemon.c
+	$(CC) $(CFLAGS) $< $(OPTIONS) $@
+$(ODIR)/test_server.o: $(TEST)/test_server.c
 	$(CC) $(CFLAGS) $< $(OPTIONS) $@
 
 .PHONY: clean

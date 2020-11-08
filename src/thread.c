@@ -159,7 +159,7 @@ static void thread_libevent_process(evutil_socket_t fd, short which, void *arg) 
         return;
     }
     switch (buf[0]) {
-    // a new conenction arrives 
+    // a new connection arrives 
     case 'c':
         /* 
          * allocate the item
@@ -170,6 +170,7 @@ static void thread_libevent_process(evutil_socket_t fd, short which, void *arg) 
             break;
         }
         // setup a new connection 
+        printf("worker thread new connection\n");
         c = conn_new(item->sfd, item->init_state, item->event_flags, this->base);
         if (c == NULL) {
             if (settings.verbose > 0) {
@@ -209,6 +210,7 @@ static int last_thread = -1;
  * only called from the main thread
  */
 void dispatch_conn_new(int sfd, conn_states init_state, int event_flags) {
+    printf("dispatch conn new %d\n", sfd);
     // allocate new item 
     CQ_ITEM *item = cq_new_item();
     char buf[1];
@@ -217,7 +219,7 @@ void dispatch_conn_new(int sfd, conn_states init_state, int event_flags) {
         fprintf(stderr, "failed to allocate memory for connection object\n");
         return;
     }
-    // use round robin algorithm to select a thread 
+    // use round robin algorithm to select a thread to bind
     int tid = (last_thread + 1) % settings.num_threads;
     LIBEVENT_THREAD *thread = threads + tid;
     last_thread = tid;
