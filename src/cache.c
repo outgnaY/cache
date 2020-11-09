@@ -38,10 +38,12 @@ int cache_config(cache_config_op op, ...) {
         break;
     }
     }
+    return rc;
 }
 
 
 // remove pidfile 
+/*
 static void remove_pidfile(const char *pid_file) {
     if (pid_file == NULL) {
         return;
@@ -50,6 +52,7 @@ static void remove_pidfile(const char *pid_file) {
         fprintf(stderr, "could not remove the pid file %s\n", pid_file);
     }
 }
+*/
 
 static void sig_handler(const int sig) {
     stop_main_loop = EXIT_NORMALLY;
@@ -81,10 +84,14 @@ bool update_event(conn *c, const int new_flags) {
 }
 
 void event_handler(const evutil_socket_t fd, const short which, void *arg) {
-    printf("event handler, fd = %d\n", fd);
     conn *c;
     c = (conn *)arg;
+    // int n;
+    // int buf[1000];
     assert(c != NULL);
+    printf("event handler, fd = %d, state = %d\n", fd, c->state);
+    // n = read(fd, buf, 1000);
+    // printf("read from buf, n = %d\n", n);
     c->which = which;
     if (fd != c->sfd) {
         if (settings.verbose > 0) {
@@ -94,6 +101,7 @@ void event_handler(const evutil_socket_t fd, const short which, void *arg) {
         return;
     }
     drive_machine(c);
+    // wait for next event
     return;
 }
 
@@ -122,8 +130,6 @@ static void clock_handler(const evutil_socket_t fd, const short which, void *arg
 
 // drive state machine
 void drive_machine(conn *c) {
-    // char buf[1000];
-    // int n;
     bool stop = false;
     int sfd;
     socklen_t addrlen;
@@ -178,8 +184,6 @@ void drive_machine(conn *c) {
             abort();
             break;
         default:
-            // n = read(c->sfd, buf, 1000);
-            // printf("n = %d\n", n);
             stop = true;
             break;
         }
@@ -188,7 +192,7 @@ void drive_machine(conn *c) {
 }
 
 static void version() {
-    printf("in-memory cache service. version %d\n", VERSION);
+    printf("in-memory cache service. version %f\n", VERSION);
 }
 
 static void usage() {
@@ -303,8 +307,6 @@ static int server_socket(int port) {
 static int server_sockets(int port) {
     return server_socket(port);
 }
-
-
 
 
 /*
@@ -464,9 +466,11 @@ int main(int argc, char **argv) {
     // init libevent threads
     cache_thread_init(settings.num_threads, NULL);
     // init timeout checking thread
+    
     if (settings.idle_timeout > 0 && start_conn_timeout_thread() == -1) {
         exit(EXIT_FAILURE);
     }
+    
     // init clock handler
     clock_handler(0, 0, 0);
 

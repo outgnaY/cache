@@ -71,6 +71,7 @@ conn *conn_new(const int sfd, conn_states init_state, const short event_flags, s
     if (c == NULL) {
         if (!(c = (conn *)calloc(1, sizeof(conn)))) {
             fprintf(stderr, "failed to allocate connection object\n");
+            return NULL;
         }
         c->sfd = sfd;
         conns[sfd] = c;
@@ -91,6 +92,7 @@ conn *conn_new(const int sfd, conn_states init_state, const short event_flags, s
         perror("event add");
         return NULL;
     }
+    
     return c;
 }
 

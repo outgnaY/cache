@@ -146,6 +146,7 @@ static void create_worker(void *(*func)(void *), void *arg) {
  * called when input arrives on the libevent wakeup pipe
  */
 static void thread_libevent_process(evutil_socket_t fd, short which, void *arg) {
+    printf("thread libevent process\n");
     LIBEVENT_THREAD *this = arg;
     CQ_ITEM *item;
     char buf[1];
@@ -185,6 +186,7 @@ static void thread_libevent_process(evutil_socket_t fd, short which, void *arg) 
         break;
     // a client socket timed out
     case 't':
+        printf("a client socket timeout\n");
         if (read(fd, &fd_from_pipe, sizeof(fd_from_pipe)) != sizeof(fd_from_pipe)) {
             if (settings.verbose > 0) {
                 fprintf(stderr, "can't read timeout fd from pipe\n");

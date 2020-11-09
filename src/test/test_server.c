@@ -9,7 +9,12 @@ int main() {
     addr.sin_family = AF_INET;
     addr.sin_port = htons(6666);
     inet_pton(AF_INET, "192.168.137.130", &addr.sin_addr);
-    connect(sockfd, (struct sockaddr *)&addr, sizeof(addr));
+    if (connect(sockfd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+        fprintf(stderr, "connect failed\n");
+    }
+    while (1) {
+        
+    }
     // const char *str = "hello\n";
     // write(sockfd, str, strlen(str));
     // close(sockfd);
