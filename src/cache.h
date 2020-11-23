@@ -33,6 +33,8 @@
 #include "util.h"
 #include "logger.h"
 #include "list.h"
+#include "logical.h"
+#include "record.h"
 
 
 // relative time 

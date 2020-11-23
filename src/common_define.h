@@ -3,6 +3,15 @@
 // common defines 
 #define VERSION 1.0
 
+/**
+ *  TYPE DEFINITIONS
+ */
+typedef unsigned long int ulint;
+
+#define byte unsigned char
+
+typedef long int lint;
+
 typedef enum {
     false = 0,
     true = 1

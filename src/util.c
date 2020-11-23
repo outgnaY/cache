@@ -20,3 +20,22 @@ void vperror(const char *fmt, ...) {
     errno = old_errno;
     perror(buf);
 }
+
+void write_to_1(byte *b, ulint n) {
+    assert(n <= 0xff);
+    b[0] = (byte)n;
+}
+
+ulint read_from_1(byte *b) {
+    return ((ulint)(b[0]));
+}
+
+void write_to_2(byte *b, ulint n) {
+    assert(n <= 0xffff);
+    b[0] = (byte)(n >> 8);
+    b[1] = (byte)(n);
+}
+
+ulint read_from_2(byte *b) {
+    return ((ulint)(b[0]) << 8) + (ulint)(b[1]);
+}
