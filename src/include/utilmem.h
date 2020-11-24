@@ -1,5 +1,5 @@
-#ifndef UTIL_H
-#define UTIL_H
+#ifndef UTILMEM_H
+#define UTILMEM_H
 
 #include "common.h"
 
@@ -24,4 +24,4 @@ void ut_free(void *p);
 /* free all allocated memory */
 void ut_free_all_mem(void);
 
-#endif  /* UTIL_H */
+#endif  /* UTILMEM_H */

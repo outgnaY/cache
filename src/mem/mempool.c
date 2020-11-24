@@ -5,6 +5,8 @@
 /* global common memory pool */
 mem_pool_t *mem_comm_pool = NULL;
 
+ulint mem_out_of_mem_err_cnt = 0;
+
 /* get memory area size */
 static ulint mem_area_get_size(mem_area_t *area) {
     return (area->size_and_free & ~MEM_AREA_FREE);
@@ -61,6 +63,7 @@ static bool mem_pool_fill_free_list(ulint i, mem_pool_t *pool) {
     bool ret;
     /* run out of memory */
     if (i >= 63) {
+        mem_out_of_mem_err_cnt++;
         return FALSE;
     }
     area = LIST_GET_FIRST(pool->free_list[i + 1]);
@@ -122,7 +125,45 @@ static mem_area_t *mem_area_get_buddy(mem_area_t *area, ulint size, mem_pool_t *
 }
 
 void mem_area_free(void *p, mem_pool_t *pool) {
-
+    mem_area_t *area;
+    mem_area_t *buddy;
+    void *newp;
+    ulint size;
+    ulint n;
+    if (mem_out_of_mem_err_cnt > 0) {
+        /* may be allocated from OS with malloc */
+        if ((byte *)p < pool->buf || (byte *)p >= pool->buf + pool->size) {
+            ut_free(p);
+            return;
+        }
+    }
+    area = (mem_area_t *)(((byte *)p) - MEM_AREA_EXTRA_SIZE);
+    size = mem_area_get_size(area);
+    buddy = mem_area_get_buddy(area, size, pool);
+    n = ut_2_log(size);
+    mutex_enter(&(pool->mutex));
+    if (buddy && mem_area_get_free(buddy) && (size == mem_area_get_size(buddy))) {
+        /* buddy is in a free list, try to merge to a bigger block */
+        if ((byte *)buddy < (byte *)area) {
+            newp = ((byte *)buddy) + MEM_AREA_EXTRA_SIZE;
+            mem_area_set_size(buddy, 2 * size);
+            mem_area_set_free(buddy, FALSE);
+        } else {
+            newp = p;
+            mem_area_set_size(area, 2 * size);
+        }
+        LIST_REMOVE(free_list, pool->free_list[n], buddy);
+        pool->reserved += ut_2_exp(n);
+        mutex_exit(&(pool->mutex));
+        mem_area_free(newp, pool);
+        return;
+    } else {
+        /* add to free list */
+        LIST_ADD_FIRST(free_list, pool->free_list[n], area);
+        mem_area_set_free(area, TRUE);
+        pool->reserved -= size;
+    }
+    mutex_exit(&(pool->mutex));
 }
 
 
